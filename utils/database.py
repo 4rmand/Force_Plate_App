@@ -31,6 +31,8 @@ def init_database():
             peak_power_total REAL,
             mean_power_rel REAL,
             peak_power_rel REAL,
+            cmj_depth_m REAL,       
+            cmj_depth_cm REAL,       
             
             -- Unweighting phase
             unw_time REAL,
@@ -100,15 +102,6 @@ def save_jump_to_db(jump_id, athlete_name, session_date, file_name, jump_number,
                     metrics_dict, normalized_curves=None):
     """
     Save a single jump's metrics (and optionally curves) to database.
-    
-    Args:
-        jump_id: Unique identifier (e.g., "athlete_date_file_jump1")
-        athlete_name: Athlete name
-        session_date: Date string (e.g., "2024.01.15")
-        file_name: Original CSV filename
-        jump_number: Jump number in that file
-        metrics_dict: Dict with keys 'unw', 'brk', 'prop', 'overall'
-        normalized_curves: Optional dict with 'force' and 'velocity' arrays
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -119,8 +112,10 @@ def save_jump_to_db(jump_id, athlete_name, session_date, file_name, jump_number,
     prop = metrics_dict.get('prop', {})
     overall = metrics_dict.get('overall', {})
     
-    # Extract overall metrics
-    bw = overall.get('Body Weight (N)', metrics_dict.get('body_weight', 0))
+    # Extract values with safe defaults
+    def safe_get(d, key, default=0):
+        val = d.get(key, default)
+        return None if val == "N/A" else val
     
     # Insert or replace jump metrics
     cursor.execute("""
@@ -129,62 +124,73 @@ def save_jump_to_db(jump_id, athlete_name, session_date, file_name, jump_number,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             CURRENT_TIMESTAMP
         )
     """, (
-        jump_id, athlete_name, session_date, file_name, jump_number,
-        # Overall
-        bw,
-        overall.get('Flight Time (s)', 0),
-        overall.get('Jump Height (m)', 0),
-        overall.get('Jump Height (cm)', 0),
-        overall.get('Takeoff Velocity (m/s)', 0),
-        overall.get('Contraction Time (s)', 0),
-        overall.get('RSI-modified', 0),
-        overall.get('Mean Power (W)', 0),
-        overall.get('Peak Power (W)', 0),
-        overall.get('Mean Power (W/kg)', 0),
-        overall.get('Peak Power (W/kg)', 0),
-        # Unweighting
-        unw.get('Time (s)', 0),
-        unw.get('Min Force (N)', 0),
-        unw.get('Min Force (% BW)', 0),
-        unw.get('Impulse (N·s)', 0),
-        unw.get('Min Force Left (N)') if unw.get('Min Force Left (N)') != "N/A" else None,
-        unw.get('Min Force Right (N)') if unw.get('Min Force Right (N)') != "N/A" else None,
-        unw.get('Min Force Asym (%)') if unw.get('Min Force Asym (%)') != "N/A" else None,
-        # Braking
-        brk.get('Time (s)', 0),
-        brk.get('Max Force (N)', 0),
-        brk.get('Max Force (% BW)', 0),
-        brk.get('Mean Force (N)', 0),
-        brk.get('Min Velocity (m/s)', 0),
-        brk.get('Impulse (N·s)', 0),
-        brk.get('Mean Power (W)', 0),
-        brk.get('Peak Power (W)', 0),
-        brk.get('Max Force Left (N)') if brk.get('Max Force Left (N)') != "N/A" else None,
-        brk.get('Max Force Right (N)') if brk.get('Max Force Right (N)') != "N/A" else None,
-        brk.get('Max Force Asym (%)') if brk.get('Max Force Asym (%)') != "N/A" else None,
-        # Propulsive
-        prop.get('Time (s)', 0),
-        prop.get('Max Force (N)', 0),
-        prop.get('Max Force (% BW)', 0),
-        prop.get('Mean Force (N)', 0),
-        prop.get('Max Velocity (m/s)', 0),
-        prop.get('Takeoff Velocity (m/s)', 0),
-        prop.get('Impulse (N·s)', 0),
-        prop.get('Mean Power (W)', 0),
-        prop.get('Peak Power (W)', 0),
-        prop.get('Max Force Left (N)') if prop.get('Max Force Left (N)') != "N/A" else None,
-        prop.get('Max Force Right (N)') if prop.get('Max Force Right (N)') != "N/A" else None,
-        prop.get('Max Force Asym (%)') if prop.get('Max Force Asym (%)') != "N/A" else None,
-        prop.get('Mean Power Left (W)') if prop.get('Mean Power Left (W)') != "N/A" else None,
-        prop.get('Mean Power Right (W)') if prop.get('Mean Power Right (W)') != "N/A" else None,
-        prop.get('Mean Power Asym (%)') if prop.get('Mean Power Asym (%)') != "N/A" else None,
-        prop.get('Peak Power Left (W)') if prop.get('Peak Power Left (W)') != "N/A" else None,
-        prop.get('Peak Power Right (W)') if prop.get('Peak Power Right (W)') != "N/A" else None,
-        prop.get('Peak Power Asym (%)') if prop.get('Peak Power Asym (%)') != "N/A" else None,
+        # Basic info
+        jump_id, 
+        athlete_name, 
+        session_date, 
+        file_name, 
+        jump_number,
+        
+        # Overall metrics (11 values)
+        metrics_dict.get('body_weight', 0),
+        metrics_dict.get('flight_time', 0),  # ← THIS WAS MISSING
+        safe_get(overall, 'Jump Height (m)'),
+        safe_get(overall, 'Jump Height (cm)'),
+        safe_get(overall, 'Takeoff Velocity (m/s)'),
+        safe_get(overall, 'Contraction Time (s)'),
+        safe_get(overall, 'RSI-modified'),
+        safe_get(overall, 'Mean Power (W)'),
+        safe_get(overall, 'Peak Power (W)'),
+        safe_get(overall, 'Mean Power (W/kg)'),
+        safe_get(overall, 'Peak Power (W/kg)'),
+        safe_get(overall, 'CMJ Depth (m)'),      # ← ADD THIS
+        safe_get(overall, 'CMJ Depth (cm)'),     # ← ADD THIS
+        
+        # Unweighting (7 values)
+        safe_get(unw, 'Time (s)'),
+        safe_get(unw, 'Min Force (N)'),
+        safe_get(unw, 'Min Force (% BW)'),
+        safe_get(unw, 'Impulse (N·s)'),
+        safe_get(unw, 'Min Force Left (N)'),
+        safe_get(unw, 'Min Force Right (N)'),
+        safe_get(unw, 'Min Force Asym (%)'),
+        
+        # Braking (11 values)
+        safe_get(brk, 'Time (s)'),
+        safe_get(brk, 'Max Force (N)'),
+        safe_get(brk, 'Max Force (% BW)'),
+        safe_get(brk, 'Mean Force (N)'),
+        safe_get(brk, 'Min Velocity (m/s)'),
+        safe_get(brk, 'Impulse (N·s)'),
+        safe_get(brk, 'Mean Power (W)'),
+        safe_get(brk, 'Peak Power (W)'),
+        safe_get(brk, 'Max Force Left (N)'),
+        safe_get(brk, 'Max Force Right (N)'),
+        safe_get(brk, 'Max Force Asym (%)'),
+        
+        # Propulsive (18 values)
+        safe_get(prop, 'Time (s)'),
+        safe_get(prop, 'Max Force (N)'),
+        safe_get(prop, 'Max Force (% BW)'),
+        safe_get(prop, 'Mean Force (N)'),
+        safe_get(prop, 'Max Velocity (m/s)'),
+        safe_get(prop, 'Takeoff Velocity (m/s)'),
+        safe_get(prop, 'Impulse (N·s)'),
+        safe_get(prop, 'Mean Power (W)'),
+        safe_get(prop, 'Peak Power (W)'),
+        safe_get(prop, 'Max Force Left (N)'),
+        safe_get(prop, 'Max Force Right (N)'),
+        safe_get(prop, 'Max Force Asym (%)'),
+        safe_get(prop, 'Mean Power Left (W)'),
+        safe_get(prop, 'Mean Power Right (W)'),
+        safe_get(prop, 'Mean Power Asym (%)'),
+        safe_get(prop, 'Peak Power Left (W)'),
+        safe_get(prop, 'Peak Power Right (W)'),
+        safe_get(prop, 'Peak Power Asym (%)'),
     ))
     
     # Optionally save normalized curves
@@ -256,4 +262,4 @@ def get_all_jumps_dataframe():
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("SELECT * FROM jump_metrics ORDER BY athlete_name, session_date", conn)
     conn.close()
-    return dfs
+    return df

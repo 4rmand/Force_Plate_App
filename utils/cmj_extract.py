@@ -700,10 +700,28 @@ def compute_phase_metrics(df: pd.DataFrame, phases: dict, bw: float, fs: int):
         mean_power_rel = mean_power_total / mass
         peak_power_rel = peak_power_total / mass
         
+        # ===== ADD CMJ DEPTH HERE ===== ← RIGHT HERE!
+        # CMJ DEPTH calculation
+        eccentric_start_idx = time_to_idx(phases['unweight_start'])
+        propulsive_start_idx = time_to_idx(phases['propulsive_start'])
+        
+        eccentric_vel = vel[eccentric_start_idx:propulsive_start_idx+1]
+        
+        if len(eccentric_vel) > 0:
+            # Integrate velocity to get displacement (depth)
+            cmj_depth = -np.trapz(eccentric_vel, dx=dt)  # Negate because velocity is negative
+            cmj_depth_cm = cmj_depth * 100  # Convert to cm
+        else:
+            cmj_depth = 0
+            cmj_depth_cm = 0
+        # ===== END CMJ DEPTH =====
+        
         metrics["overall"] = {
             "Contraction Time (s)": round(contraction_time, 3),
             "Jump Height (m)": round(jump_height, 3),
             "Jump Height (cm)": round(jump_height * 100, 1),
+            "CMJ Depth (m)": round(cmj_depth, 3),           # ← ADD THIS LINE
+            "CMJ Depth (cm)": round(cmj_depth_cm, 1),       # ← ADD THIS LINE
             "Takeoff Velocity (m/s)": round(takeoff_velocity, 3),
             "RSI-modified": round(rsi_mod, 3),
             "Mean Power (W)": round(mean_power_total, 1),
@@ -711,5 +729,5 @@ def compute_phase_metrics(df: pd.DataFrame, phases: dict, bw: float, fs: int):
             "Mean Power (W/kg)": round(mean_power_rel, 1),
             "Peak Power (W/kg)": round(peak_power_rel, 1)
         }
-    
+
     return metrics
