@@ -151,46 +151,86 @@ dcc.Tabs(id="main_tabs", value='tab-curve', children=[
         ], style={"padding": "20px"})
     ]),
     
-            # ==================== TAB 2: VERTICAL VECTOR ====================
-            dcc.Tab(label='🚀 Vertical Vector', value='tab-vector', children=[
+    # ==================== TAB 2: VERTICAL VECTOR ====================
+    dcc.Tab(label='🚀 Vertical Vector', value='tab-vector', children=[
+        html.Div([
+            html.H3("🏆 Athlete Performance Analysis", style={"textAlign": "center", "marginTop": "20px"}),
+            
+            # Show which athlete is being analyzed
+            html.Div(id="focus_athlete_display", style={"textAlign": "center", "marginBottom": "20px"}),
+            
+            # Comparison controls
+            html.Div([
                 html.Div([
-                    html.H3("🏆 Athlete Performance Analysis", style={"textAlign": "center", "marginTop": "20px"}),
-                    
-                    # Show which athlete is being analyzed
-                    html.Div(id="focus_athlete_display", style={"textAlign": "center", "marginBottom": "20px"}),
-                    
-                    # Comparison controls
-                    html.Div([
-                        html.Div([
-                            html.Label("Select metric:"),
-                            dcc.Dropdown(
-                                id="compare_metric",
-                                options=[
-                                    {"label": "Jump Height (cm)", "value": "jump_height_cm"},
-                                    {"label": "RSI-modified", "value": "rsi_modified"},
-                                    {"label": "Peak Power (W/kg)", "value": "peak_power_rel"},
-                                    {"label": "Mean Power (W/kg)", "value": "mean_power_rel"},
-                                    {"label": "Takeoff Velocity (m/s)", "value": "takeoff_velocity"},
-                                    {"label": "Contraction Time (s)", "value": "contraction_time"},
-                                    {"label": "Peak Propulsive Force (% BW)", "value": "prop_max_force_pct"},
-                                ],
-                                value="jump_height_cm",
-                                style={"width": "100%"}
-                            ),
-                        ], style={"width": "35%", "display": "inline-block", "paddingRight": "20px"}),
-                        
-                        html.Div([
-                            html.Label("Compare to athlete (optional):"),
-                            dcc.Dropdown(id="compare_athlete", placeholder="Select athlete to compare...", style={"width": "100%"}),
-                        ], style={"width": "35%", "display": "inline-block", "paddingRight": "20px"}),
-                        
-                        html.Div([
-                            html.Br(),
-                            html.Button("Show Analysis", id="compare_btn", 
-                                    style={"marginTop": "5px", "width": "100%"}),
-                        ], style={"width": "20%", "display": "inline-block"}),
-                    ], style={"marginBottom": "30px"}),
-        
+                    html.Label("Select metric:"),
+                    dcc.Dropdown(
+                        id="compare_metric",
+                        options=[
+                            # === OVERALL METRICS ===
+                            {"label": "─── OVERALL METRICS ───", "value": "header_overall", "disabled": True},
+                            {"label": "  Jump Height (cm)", "value": "jump_height_cm"},
+                            {"label": "  Jump Height (m)", "value": "jump_height_m"},
+                            {"label": "  CMJ Depth (cm)", "value": "cmj_depth_cm"},
+                            {"label": "  CMJ Depth (m)", "value": "cmj_depth_m"},
+                            {"label": "  Flight Time (s)", "value": "flight_time"},
+                            {"label": "  Takeoff Velocity (m/s)", "value": "takeoff_velocity"},
+                            {"label": "  Contraction Time (s)", "value": "contraction_time"},
+                            {"label": "  RSI-modified", "value": "rsi_modified"},
+                            {"label": "  Mean Power (W)", "value": "mean_power_total"},
+                            {"label": "  Peak Power (W)", "value": "peak_power_total"},
+                            {"label": "  Mean Power (W/kg)", "value": "mean_power_rel"},
+                            {"label": "  Peak Power (W/kg)", "value": "peak_power_rel"},
+                            
+                            # === UNWEIGHTING METRICS ===
+                            {"label": "─── UNWEIGHTING PHASE ───", "value": "header_unw", "disabled": True},
+                            {"label": "  Time (s)", "value": "unw_time"},
+                            {"label": "  Min Force (N)", "value": "unw_min_force"},
+                            {"label": "  Min Force (% BW)", "value": "unw_min_force_pct"},
+                            {"label": "  Impulse (N·s)", "value": "unw_impulse"},
+                            {"label": "  Force Asymmetry (%)", "value": "unw_min_force_asym"},
+                            
+                            # === BRAKING METRICS ===
+                            {"label": "─── BRAKING PHASE (Eccentric) ───", "value": "header_brk", "disabled": True},
+                            {"label": "  Time (s)", "value": "brk_time"},
+                            {"label": "  Max Force (N)", "value": "brk_max_force"},
+                            {"label": "  Max Force (% BW)", "value": "brk_max_force_pct"},
+                            {"label": "  Mean Force (N)", "value": "brk_mean_force"},
+                            {"label": "  Min Velocity (m/s)", "value": "brk_min_velocity"},
+                            {"label": "  Impulse (N·s)", "value": "brk_impulse"},
+                            {"label": "  Mean Power (W)", "value": "brk_mean_power"},
+                            {"label": "  Peak Power (W)", "value": "brk_peak_power"},
+                            {"label": "  Force Asymmetry (%)", "value": "brk_max_force_asym"},
+                            
+                            # === PROPULSIVE METRICS ===
+                            {"label": "─── PROPULSIVE PHASE (Concentric) ───", "value": "header_prop", "disabled": True},
+                            {"label": "  Time (s)", "value": "prop_time"},
+                            {"label": "  Max Force (N)", "value": "prop_max_force"},
+                            {"label": "  Max Force (% BW)", "value": "prop_max_force_pct"},
+                            {"label": "  Mean Force (N)", "value": "prop_mean_force"},
+                            {"label": "  Max Velocity (m/s)", "value": "prop_max_velocity"},
+                            {"label": "  Takeoff Velocity (m/s)", "value": "prop_takeoff_velocity"},
+                            {"label": "  Impulse (N·s)", "value": "prop_impulse"},
+                            {"label": "  Mean Power (W)", "value": "prop_mean_power"},
+                            {"label": "  Peak Power (W)", "value": "prop_peak_power"},
+                            {"label": "  Force Asymmetry (%)", "value": "prop_max_force_asym"},
+                            {"label": "  Power Asymmetry (%)", "value": "prop_mean_power_asym"},
+                        ],
+                        value="jump_height_cm",
+                        style={"width": "100%"}
+                    ),
+                ], style={"width": "35%", "display": "inline-block", "paddingRight": "20px"}),
+                
+                html.Div([
+                    html.Label("Compare to athlete (optional):"),
+                    dcc.Dropdown(id="compare_athlete", placeholder="Select athlete to compare...", style={"width": "100%"}),
+                ], style={"width": "35%", "display": "inline-block", "paddingRight": "20px"}),
+                
+                html.Div([
+                    html.Br(),
+                    html.Button("Show Analysis", id="compare_btn", 
+                            style={"marginTop": "5px", "width": "100%"}),
+                ], style={"width": "20%", "display": "inline-block"}),
+            ], style={"marginBottom": "30px"}),
             
             # Time series plot with percentile bands
             dcc.Graph(id="comparison_plot", style={"height": "50vh"}),

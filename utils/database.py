@@ -117,27 +117,18 @@ def save_jump_to_db(jump_id, athlete_name, session_date, file_name, jump_number,
         val = d.get(key, default)
         return None if val == "N/A" else val
     
-    # Insert or replace jump metrics
-    cursor.execute("""
-        INSERT OR REPLACE INTO jump_metrics VALUES (
-            ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            CURRENT_TIMESTAMP
-        )
-    """, (
-        # Basic info
+    # Build the values tuple
+    values = (
+        # Basic info (5)
         jump_id, 
         athlete_name, 
         session_date, 
         file_name, 
         jump_number,
         
-        # Overall metrics (11 values)
+        # Overall metrics (13)
         metrics_dict.get('body_weight', 0),
-        metrics_dict.get('flight_time', 0),  # ← THIS WAS MISSING
+        metrics_dict.get('flight_time', 0),
         safe_get(overall, 'Jump Height (m)'),
         safe_get(overall, 'Jump Height (cm)'),
         safe_get(overall, 'Takeoff Velocity (m/s)'),
@@ -147,10 +138,10 @@ def save_jump_to_db(jump_id, athlete_name, session_date, file_name, jump_number,
         safe_get(overall, 'Peak Power (W)'),
         safe_get(overall, 'Mean Power (W/kg)'),
         safe_get(overall, 'Peak Power (W/kg)'),
-        safe_get(overall, 'CMJ Depth (m)'),      # ← ADD THIS
-        safe_get(overall, 'CMJ Depth (cm)'),     # ← ADD THIS
+        safe_get(overall, 'CMJ Depth (m)'),
+        safe_get(overall, 'CMJ Depth (cm)'),
         
-        # Unweighting (7 values)
+        # Unweighting (7)
         safe_get(unw, 'Time (s)'),
         safe_get(unw, 'Min Force (N)'),
         safe_get(unw, 'Min Force (% BW)'),
@@ -159,7 +150,7 @@ def save_jump_to_db(jump_id, athlete_name, session_date, file_name, jump_number,
         safe_get(unw, 'Min Force Right (N)'),
         safe_get(unw, 'Min Force Asym (%)'),
         
-        # Braking (11 values)
+        # Braking (11)
         safe_get(brk, 'Time (s)'),
         safe_get(brk, 'Max Force (N)'),
         safe_get(brk, 'Max Force (% BW)'),
@@ -172,7 +163,7 @@ def save_jump_to_db(jump_id, athlete_name, session_date, file_name, jump_number,
         safe_get(brk, 'Max Force Right (N)'),
         safe_get(brk, 'Max Force Asym (%)'),
         
-        # Propulsive (18 values)
+        # Propulsive (18)
         safe_get(prop, 'Time (s)'),
         safe_get(prop, 'Max Force (N)'),
         safe_get(prop, 'Max Force (% BW)'),
@@ -191,16 +182,23 @@ def save_jump_to_db(jump_id, athlete_name, session_date, file_name, jump_number,
         safe_get(prop, 'Peak Power Left (W)'),
         safe_get(prop, 'Peak Power Right (W)'),
         safe_get(prop, 'Peak Power Asym (%)'),
-    ))
+    )
     
-    # Optionally save normalized curves
-    if normalized_curves:
-        force_json = json.dumps(normalized_curves.get('force', []))
-        vel_json = json.dumps(normalized_curves.get('velocity', []))
-        
-        cursor.execute("""
-            INSERT OR REPLACE INTO jump_curves VALUES (?, ?, ?)
-        """, (jump_id, force_json, vel_json))
+    # DEBUG: Print counts
+    print(f"[DEBUG] Number of values in tuple: {len(values)}")
+    print(f"[DEBUG] Basic: 5, Overall: 13, Unw: 7, Brk: 11, Prop: 18 = {5+13+7+11+18}")
+    
+    # Insert or replace jump metrics
+    cursor.execute("""
+        INSERT OR REPLACE INTO jump_metrics VALUES (
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            CURRENT_TIMESTAMP
+        )
+    """, values)
     
     conn.commit()
     conn.close()
